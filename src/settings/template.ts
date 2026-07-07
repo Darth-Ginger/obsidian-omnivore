@@ -152,11 +152,23 @@ function formatDateFunc() {
   }
 }
 
+// wraps a rendered value in a JSON string literal, which is always a valid
+// YAML flow scalar. use this in the Front Matter template to protect any
+// free-text field (title, description, note, author, etc.) that might
+// contain colons, quotes, or other characters that break YAML parsing,
+// e.g. `title: {{#yamlString}}{{title}}{{/yamlString}}`
+function yamlStringFunc() {
+  return function (text: string, render: (text: string) => string) {
+    return JSON.stringify(render(text))
+  }
+}
+
 const functionMap: FunctionMap = {
   lowerCase,
   upperCase,
   upperCaseFirst,
   formatDate: formatDateFunc,
+  yamlString: yamlStringFunc,
 }
 
 const getOmnivoreUrl = (item: Item) => {
