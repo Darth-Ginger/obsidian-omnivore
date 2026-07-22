@@ -140,3 +140,66 @@ export const deleteItem = async (
 
   return true
 }
+
+export const SYNCED_LABEL_NAME = 'obsidian-synced'
+
+interface ExistingLabel {
+  name: string
+  color?: string | null
+}
+
+// Tags an Omnivore item with SYNCED_LABEL_NAME so it is excluded from future
+// syncs by the customQuery filter (`-label:obsidian-synced`). This is what
+// keeps resyncs incremental on top of (and more durable than) the plugin's
+// native syncAt-timestamp dedup, since syncAt resets whenever the Filter or
+// Custom Query setting is edited.
+export const setSyncedLabel = async (
+  endpoint: string,
+  apiKey: string,
+  pageId: string,
+  existingLabels?: ExistingLabel[] | null,
+): Promise<boolean> => {
+  const existingNames = new Set((existingLabels || []).map((l) => l.name))
+  const labels = (existingLabels || []).map((l) => ({
+    name: l.name,
+    color: l.color || undefined,
+  }))
+  if (!existingNames.has(SYNCED_LABEL_NAME)) {
+    labels.push({ name: SYNCED_LABEL_NAME, color: '#6B7280' })
+  }
+
+  const query = `mutation SetLabels($input: SetLabelsInput!) {
+    setLabels(input: $input) {
+      ... on SetLabelsSuccess {
+        labels { id name }
+      }
+      ... on SetLabelsError {
+        errorCodes
+      }
+    }
+  }`
+
+  const response = await requestUrl({
+    url: `${baseUrl(endpoint)}/api/graphql`,
+    method: 'POST',
+    contentType: 'application/json',
+    headers: { Authorization: apiKey },
+    body: JSON.stringify({ query, variables: { input: { pageId, labels } } }),
+    throw: false,
+  })
+
+  const result = response.json
+  if (
+    !result ||
+    result.errors ||
+    result.data?.setLabels?.__typename === 'SetLabelsError'
+  ) {
+    throw new Error(
+      `Failed to set synced label: ${JSON.stringify(
+        result?.errors || result?.data?.setLabels,
+      )}`,
+    )
+  }
+
+  return true
+}

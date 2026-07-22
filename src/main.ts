@@ -10,7 +10,7 @@ import {
   TFile,
   TFolder,
 } from 'obsidian'
-import { deleteItem, getItems } from './api'
+import { deleteItem, getItems, setSyncedLabel } from './api'
 import { DEFAULT_SETTINGS, OmnivoreSettings } from './settings'
 import {
   preParseTemplate,
@@ -237,7 +237,9 @@ export default class OmnivorePlugin extends Plugin {
       )
 
       const size = 15
-      for (let after = 0; ; after += size) {
+      let after = 0
+      const seenItemIds = new Set<string>()
+      for (;;) {
         const [items, hasNextPage] = await getItems(
           this.settings.endpoint,
           apiKey,
@@ -249,7 +251,16 @@ export default class OmnivorePlugin extends Plugin {
           'highlightedMarkdown',
         )
 
+        if (items.length > 0 && items.every((item) => seenItemIds.has(item.id))) {
+          console.warn(
+            'obsidian-omnivore: sync made no progress, stopping to avoid an infinite loop',
+          )
+          break
+        }
+
+        let labeledInBatch = 0
         for (const item of items) {
+          seenItemIds.add(item.id)
           const folderName = replaceIllegalCharsFolder(
             normalizePath(render(item, folder, this.settings.folderDateFormat)),
           )
@@ -349,6 +360,7 @@ export default class OmnivorePlugin extends Plugin {
                 omnivoreFile,
                 `${newFrontMatterStr}\n\n${newContentWithoutFrontMatter}`,
               )
+              if (await this.markItemSynced(item)) labeledInBatch++
               continue
             }
             // sync into separate files
@@ -382,11 +394,13 @@ export default class OmnivorePlugin extends Plugin {
                 }
               },
             )
+            if (await this.markItemSynced(item)) labeledInBatch++
             continue
           }
           // file doesn't exist, so we need to create it
           try {
             await this.app.vault.create(normalizedPath, content)
+            if (await this.markItemSynced(item)) labeledInBatch++
           } catch (error) {
             if (error.toString().includes('File already exists')) {
               new Notice(
@@ -399,6 +413,7 @@ export default class OmnivorePlugin extends Plugin {
         }
 
         this.settings.syncAt = DateTime.local().toFormat(DATE_FORMAT)
+        after += items.length - labeledInBatch
 
         if (!hasNextPage) {
           break
@@ -413,6 +428,21 @@ export default class OmnivorePlugin extends Plugin {
     } finally {
       this.settings.syncing = false
       await this.saveSettings()
+    }
+  }
+
+  private async markItemSynced(item: Item): Promise<boolean> {
+    try {
+      await setSyncedLabel(
+        this.settings.endpoint,
+        this.settings.apiKey,
+        item.id,
+        item.labels,
+      )
+      return true
+    } catch (e) {
+      console.error(`Failed to mark item ${item.id} as synced`, e)
+      return false
     }
   }
 
