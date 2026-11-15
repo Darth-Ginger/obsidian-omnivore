@@ -10,7 +10,7 @@ import {
   TFile,
   TFolder,
 } from 'obsidian'
-import { deleteItem, getItems, setSyncedLabel } from './api'
+import { deleteItem, getItems, isStillSaving, setSyncedLabel } from './api'
 import { DEFAULT_SETTINGS, OmnivoreSettings } from './settings'
 import {
   preParseTemplate,
@@ -261,6 +261,15 @@ export default class OmnivorePlugin extends Plugin {
         let labeledInBatch = 0
         for (const item of items) {
           seenItemIds.add(item.id)
+          if (isStillSaving(item, includeContent)) {
+            // The server has not finished fetching this item. Writing it now
+            // would save the placeholder and the synced label would stop it
+            // from ever being fetched again, so leave it for a later sync.
+            console.log(
+              `obsidian-omnivore: skipping ${item.id}, still being saved`,
+            )
+            continue
+          }
           const folderName = replaceIllegalCharsFolder(
             normalizePath(render(item, folder, this.settings.folderDateFormat)),
           )

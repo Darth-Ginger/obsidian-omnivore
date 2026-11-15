@@ -148,6 +148,24 @@ interface ExistingLabel {
   color?: string | null
 }
 
+// Placeholder the Omnivore API stores as an item's content until the
+// content-fetch service finishes (create_page_save_request.ts SAVING_CONTENT).
+export const SAVING_CONTENT = 'Your link is being saved...'
+
+// True while the server is still fetching the item. The search API exposes no
+// processing state, so this keys off the placeholder content, or, when content
+// was not fetched, the untouched title (still the URL) with no words counted.
+export const isStillSaving = (item: Item, contentFetched: boolean): boolean => {
+  if (contentFetched && typeof item.content === 'string') {
+    return item.content.trim() === SAVING_CONTENT
+  }
+  return (
+    !item.wordsCount &&
+    !!item.title &&
+    (item.title === item.originalArticleUrl || item.title === item.url)
+  )
+}
+
 // Tags an Omnivore item with SYNCED_LABEL_NAME so it is excluded from future
 // syncs by the customQuery filter (`-label:obsidian-synced`). This is what
 // keeps resyncs incremental on top of (and more durable than) the plugin's
