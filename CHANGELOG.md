@@ -1,3 +1,18 @@
+## [1.10.6](https://github.com/Darth-Ginger/obsidian-omnivore/compare/1.10.5...1.10.6) (2026-11-14)
+
+
+### Bug Fixes
+
+* **sync:** skip items the server is still saving, so a sync that runs mid-fetch no longer writes the "Your link is being saved..." placeholder and labels it obsidian-synced ([0059926](https://github.com/Darth-Ginger/obsidian-omnivore/commit/0059926))
+
+## [1.10.5](https://github.com/Darth-Ginger/obsidian-omnivore/compare/1.10.4...1.10.5) (2026-07-22)
+
+
+### Features
+
+* **template:** yamlString helper escapes free-text frontmatter fields ([b426d03](https://github.com/Darth-Ginger/obsidian-omnivore/commit/b426d03))
+* **sync:** pushback tags synced items with the obsidian-synced label ([6d306ad](https://github.com/Darth-Ginger/obsidian-omnivore/commit/6d306ad))
+
 ## [1.10.4](https://github.com/omnivore-app/obsidian-omnivore/compare/1.10.3...1.10.4) (2024-07-16)
 
 
